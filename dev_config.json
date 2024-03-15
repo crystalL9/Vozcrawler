@@ -1,0 +1,7 @@
+{
+    "use_proxy":1,
+    "proxy_post":"192.168.143.101:4007",
+    "proxy_link":"192.168.143.101:4007",
+    "use_cookie":1,
+    "link":["https://voz.vn/f/diem-bao.33/"]
+}
