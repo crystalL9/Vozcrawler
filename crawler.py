@@ -18,32 +18,29 @@ class VozCrawler :
     fake=data['use_cookie']
     reset=data['use_proxy']
     def find_articles_with_classes(self):
+        chromium=ChromiumBrowser(fake=self.fake, proxy=self.proxy_post,reset=self.reset) 
         while True:
             if not self.link_queue.empty():
                 # for _ in range(4):
                 #     self.link_queue.get()
                 url=self.link_queue.get()
-                link=str(url).split('|')[0]
+                link_post=str(url).split('|')[0]
                 comments=str(url).split('|')[1]
                 views=str(url).split('|')[2]
-                print(f"Crawl all data of all pages from {link}")
-                chromium=ChromiumBrowser(fake=self.fake, proxy=self.proxy_post,reset=self.reset)
-                chromium.page.goto(link,timeout=600000)
-                element = chromium.page.query_selector(".p-title-value")
-                title = element.inner_text()
+                print(f"Crawl all data of all pages from {link_post}")
                 page_num = 0
-                articles = chromium.page.query_selector_all('article.message.message--post.js-post.js-inlineModContainer')
-                source_id = articles[0].get_attribute('id')
                 next_link=''
                 while next_link!=None:
-                    if page_num > 0:
-                        chromium.close()
-                        time.sleep(10)
-                        chromium=ChromiumBrowser(fake=self.fake, proxy=self.proxy_post,reset=self.reset)
-                        chromium.page.goto(next_link,timeout=600000)
+                    chromium.page.goto(link_post,timeout=600000)
+                    articles = chromium.page.query_selector_all('article.message.message--post.js-post.js-inlineModContainer')
+                    if page_num == 0:
+                        element = chromium.page.query_selector(".p-title-value")
+                        title = element.inner_text()
+                        source_id = articles[0].get_attribute('id')
                     try:
                         next_link_elm = chromium.page.query_selector('a.pageNav-jump.pageNav-jump--next')
-                        next_link = 'https://voz.vn'+next_link_elm.get_attribute('href')
+                        link_post = 'https://voz.vn'+next_link_elm.get_attribute('href')
+                        next_link=link_post
                     except:
                         next_link = None
                     try:
@@ -56,7 +53,6 @@ class VozCrawler :
                         spoiler.click()
                     except:
                         pass
-                    articles = chromium.page.query_selector_all('article.message.message--post.js-post.js-inlineModContainer')
                     for article in articles:
                         try:
                             expand_links = article.query_selector_all(".bbCodeBlock-expandLink.js-expandLink")[0]
@@ -263,14 +259,17 @@ class VozCrawler :
                             self.save_data(data_crawl)
                     page_num += 1  
                     with open('link.txt', 'a', encoding='utf-8') as file:
-                        file.write(url)
+                        file.write(f'{link_post}\n')
+                        file.close()
                     # ChromiumBrowser.stop_playwright()
-                    chromium.close()
+                    
                     time.sleep(2)
                  # Sleep một chút giữa mỗi lần get để mô phỏng quá trình thực tế
             else:
                 # Nếu queue rỗng, chờ đên khi có phần tử mới được thêm vào
-                time.sleep(10)
+                # chromium.close()
+                time.sleep(5)
+                
             
     def save_data(self,data):
         with open('voz.txt','a',encoding='utf8') as file:
@@ -282,7 +281,7 @@ class VozCrawler :
         list_like=[]
         while True:
             print("Processing get reactions of post .....")
-            chromium=ChromiumBrowser(fake=self.fake, proxy=self.proxy_post,reset=self.reset)
+            chromium=ChromiumBrowser(fake=self.fake, proxy=self.proxy_post)
             chromium.page.goto(url,timeout=600000)
             chromium.page.evaluate('window.scrollTo(0, document.body.scrollHeight)')
             chromium.page.wait_for_timeout(2000)
@@ -401,19 +400,23 @@ class VozCrawler :
             # div_elements = div_elements_1 + div_elements_2
             div_elements = div_elements = chromium2.page.query_selector_all('div.structItemContainer > div')
             for div in div_elements:
-                reaction_txt=str(div.query_selector("div.structItem-cell.structItem-cell--meta").text_content()).split('\n')
-                comment=self.convert_unit_to_num(str(reaction_txt[3]))
-                views=self.convert_unit_to_num(str(reaction_txt[7]))
-                a_element = div.query_selector_all('div.structItem-title a')[-1]
-                li_element = div.query_selector('li.structItem-startDate')
-                time_element =  li_element.query_selector('time')
-                time_=int(time_element.get_attribute('data-time'))
-                href='https://voz.vn'+a_element.get_attribute('href')
-                if href not in link_crawled and href not in black_list and  time_>=midnight_timestamp:
-                    link = f'{href}|{comment}|{views}'
-                    print(f'---------->>>>>>>>> Put {link} to Queue')
-                    self.link_queue.put(link)
+                try:
+                    reaction_txt=str(div.query_selector("div.structItem-cell.structItem-cell--meta").text_content()).split('\n')
+                    comment=self.convert_unit_to_num(str(reaction_txt[3]))
+                    views=self.convert_unit_to_num(str(reaction_txt[7]))
+                    a_element = div.query_selector_all('div.structItem-title a')[-1]
+                    li_element = div.query_selector('li.structItem-startDate')
+                    time_element =  li_element.query_selector('time')
+                    time_=int(time_element.get_attribute('data-time'))
+                    href='https://voz.vn'+a_element.get_attribute('href')
+                    if href not in link_crawled and href not in black_list and  time_>=midnight_timestamp:
+                        link = f'{href}|{comment}|{views}'
+                        print(f'---------->>>>>>>>> Put {link} to Queue')
+                        self.link_queue.put(link)
+                except:
+                    pass
             page_num += 1
             time.sleep(10)
         chromium2.close()
+        # self.link_queue.put('https://voz.vn/t/xe-han-xe-nhat-va-du-lieu.941010/|123|123')
 

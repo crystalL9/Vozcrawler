@@ -40,7 +40,6 @@ class ChromiumBrowser:
             '--disable-blink-features=AutomationControlled'
         ]
         
-        # Thêm cấu hình proxy nếu biến 'self.proxy' không None
         launch_options = {
             'headless': False,
             'args': browser_args
